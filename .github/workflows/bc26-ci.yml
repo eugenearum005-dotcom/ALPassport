@@ -1,0 +1,88 @@
+name: Cortech BC26 Local CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest
+    env:
+      BC_SERVER_INSTANCE: ${{ secrets.BC_SERVER_INSTANCE }}
+      BC_TENANT: ${{ secrets.BC_TENANT }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup AL compiler
+        uses: al-solutions/setup-al-language@v1
+        with:
+          version: latest
+
+      - name: Restore AL packages
+        run: |
+          if (!(Test-Path ".alpackages")) { New-Item -ItemType Directory -Force -Path ".alpackages" | Out-Null }
+
+      - name: Compile AL extension
+        shell: pwsh
+        run: |
+          $alc = Get-Command alc.exe -ErrorAction Stop
+          Write-Host "Using alc.exe at: $($alc.Path)"
+          $outPath = "${{ github.workspace }}\output"
+          New-Item -ItemType Directory -Force -Path $outPath | Out-Null
+          & $alc.Path /project:"${{ github.workspace }}" /packagecachepath:"${{ github.workspace }}\.alpackages" /out:"$outPath\ALPassport.app"
+          if ($LASTEXITCODE -ne 0) { throw "AL compilation failed with exit code $LASTEXITCODE." }
+
+      - name: Verify app file exists
+        shell: pwsh
+        run: |
+          $appFile = "${{ github.workspace }}\output\ALPassport.app"
+          if (!(Test-Path $appFile)) { throw "Compiled app file not found: $appFile" }
+          Write-Host "Compiled app found: $appFile"
+
+      - name: Run AL tests placeholder
+        if: false
+        shell: pwsh
+        run: |
+          Write-Host "Set up a BC test container or ALOps test runner for AL test execution."
+
+      - name: Publish and deploy to BC26
+        if: github.ref == 'refs/heads/main'
+        shell: pwsh
+        run: |
+          $navTool = (Get-ChildItem -Path "C:\Program Files\Microsoft Dynamics 365 Business Central" -Recurse -Filter "NavAdminTool.ps1" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+          if (-not $navTool) { throw "NavAdminTool.ps1 not found on runner." }
+          Import-Module $navTool
+
+          $appFile = "${{ github.workspace }}\output\ALPassport.app"
+          if (!(Test-Path $appFile)) { throw "App file not found: $appFile" }
+
+          $newApp = Get-NAVAppInfo -Path $appFile
+          $newAppName = $newApp.Name
+          $newAppVersion = $newApp.Version
+
+          $existingApp = Get-NAVAppInfo -ServerInstance $env:BC_SERVER_INSTANCE -Name $newAppName -ErrorAction SilentlyContinue
+
+          if ($existingApp) {
+            Write-Host "Removing previous version $($existingApp.Version)..."
+            Uninstall-NAVApp -ServerInstance $env:BC_SERVER_INSTANCE -Name $newAppName -Tenant $env:BC_TENANT -Force
+            Unpublish-NAVApp -ServerInstance $env:BC_SERVER_INSTANCE -Name $newAppName -Version $existingApp.Version -Force
+          } else {
+            Write-Host "No existing app version found."
+          }
+
+          Write-Host "Publishing new app version $newAppVersion..."
+          Publish-NAVApp -ServerInstance $env:BC_SERVER_INSTANCE -Path $appFile -SkipVerification
+          Sync-NAVApp -ServerInstance $env:BC_SERVER_INSTANCE -Name $newAppName -Version $newAppVersion -Tenant $env:BC_TENANT
+
+          if ($existingApp -and $existingApp.Version -lt $newAppVersion) {
+            Write-Host "Upgrading app data..."
+            Start-NAVAppDataUpgrade -ServerInstance $env:BC_SERVER_INSTANCE -Name $newAppName -Version $newAppVersion
+          } else {
+            Write-Host "Installing or upgrading app..."
+            Install-NAVApp -ServerInstance $env:BC_SERVER_INSTANCE -Name $newAppName -Version $newAppVersion -Tenant $env:BC_TENANT
+          }
+          Write-Host "Deployment completed successfully."
