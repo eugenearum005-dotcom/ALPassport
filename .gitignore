@@ -1,0 +1,7 @@
+.alpackages/
+*.app
+*.vsix
+.vscode/
+obj/
+node_modules/
+*.log

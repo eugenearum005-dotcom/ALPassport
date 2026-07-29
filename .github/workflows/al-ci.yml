@@ -1,0 +1,31 @@
+name: AL CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup AL compiler
+        uses: al-solutions/setup-al-language@v1
+        with:
+          version: latest
+
+      - name: Build AL app
+        shell: pwsh
+        run: |
+          $alc = Get-Command alc.exe -ErrorAction Stop
+          & $alc.Path /project:"$env:GITHUB_WORKSPACE" /packagecachepath:"$env:GITHUB_WORKSPACE\.alpackages"
+
+      - name: CI test execution note
+        shell: pwsh
+        run: |
+          Write-Host 'AL build completed. To execute test codeunits, configure a Business Central test container or ALOps test runner step.'
