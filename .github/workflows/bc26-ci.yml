@@ -17,25 +17,23 @@ jobs:
       - name: Checkout repository code
         uses: actions/checkout@v4
 
-      - name: Download AL Symbols
-        shell: pwsh
-        run: Write-Host "Symbols assumed present in .alpackages/"
-
-      - name: Verify package cache
+      - name: Copy AL Symbols
         shell: pwsh
         run: |
-         $pkg = "${{ github.workspace }}\.alpackages"
-         Write-Host "Workspace: ${{ github.workspace }}"
-         Write-Host "Package path: $pkg"
+         $source = "C:\Users\Admin\Documents\AL\ALProject3\.alpackages"
+         $dest = "${{ github.workspace }}\.alpackages"
 
-         if (Test-Path $pkg) {
-         Write-Host ".alpackages exists."
-         Get-ChildItem $pkg
-         } else {
-         Write-Host ".alpackages does not exist. Creating it..."
-         New-Item -ItemType Directory -Force -Path $pkg
-         Get-ChildItem "${{ github.workspace }}"
-         }  
+         if (!(Test-Path $source)) {
+         throw "Source symbol folder not found: $source"
+         }
+
+         New-Item -ItemType Directory -Force -Path $dest | Out-Null
+
+         Copy-Item "$source\*.app" -Destination $dest -Force
+
+         Write-Host "Copied symbols:"
+         Get-ChildItem $dest
+
 
       - name: Compile AL Extension
         shell: pwsh
@@ -71,7 +69,7 @@ jobs:
 
       - name: Publish and Deploy to Cortech BC26
         if: github.ref == 'refs/heads/main'
-        shell: powershell
+        shell: pwsh
         run: |
           # 1. Load the Business Central Administration modules
           $navTool = (Get-ChildItem -Path "C:\Program Files\Microsoft Dynamics 365 Business Central" -Recurse -Filter "NavAdminTool.ps1" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
