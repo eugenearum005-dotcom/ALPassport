@@ -12,46 +12,46 @@ jobs:
     env:
       BC_SERVER_INSTANCE: ${{ secrets.BC_SERVER_INSTANCE }}
       BC_TENANT: ${{ secrets.BC_TENANT }}
-    
+
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v4
 
       - name: Download AL Symbols
         shell: powershell
-        run: Write-Host "Symbols assumed present in.alpackages/"
+        run: Write-Host "Symbols assumed present in .alpackages/"
 
       - name: Compile AL Extension
         shell: powershell
         run: |
           # 1. Intelligently locate alc.exe
           $alcPath = (Get-ChildItem "C:\Users\*\.vscode\extensions\ms-dynamics-smb.al-*\bin\win32\alc.exe" -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
-          
-          if (-not $alcPath) { 
+
+          if (-not $alcPath) {
               Write-Error "alc.exe not found. Is the AL extension installed?"
-              exit 1 
+              exit 1
           }
           Write-Host "Using alc.exe at: $alcPath"
-          
+
           # 2. Create output folder
           New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\output" | Out-Null
-          
+
           # 3. Compile the code
           & $alcPath /project:"${{ github.workspace }}" /packagecachepath:"${{ github.workspace }}\.alpackages" /out:"${{ github.workspace }}\output\CortechProject.app"
-          
+
           if ($LASTEXITCODE -ne 0) { exit 1 }
           Write-Host "Compilation Successful!"
 
       - name: Run AL Tests
         shell: powershell
         run: |
-          #1 .Run AL tests
-           $testApp = "${{ github.workspace }}\output\ALProject1.test.app"
+          # 1. Run AL tests
+          $testApp = "${{ github.workspace }}\output\ALProject3.Test.app"
           if (Test-Path $testApp) {
-           Write-Host "Running tests..."
-           } else {
-            Write-Host "No test app found, skipping tests"
-           }
+              Write-Host "Running tests..."
+          } else {
+              Write-Host "No test app found, skipping tests"
+          }
 
       - name: Publish and Deploy to Cortech BC26
         if: github.ref == 'refs/heads/main'
@@ -70,7 +70,6 @@ jobs:
           # 3. Check if any version of this app is ALREADY on the server
           $existingApp = Get-NAVAppInfo -ServerInstance $env:BC_SERVER_INSTANCE -Name $newAppName -ErrorAction SilentlyContinue
 
-
           # 4. Handle Uninstallation of old version (if it exists)
           if ($existingApp) {
               Write-Host "Found previous version: $($existingApp.Version). Uninstalling and unpublishing..."
@@ -83,7 +82,7 @@ jobs:
           # 5. Publish the New App
           Write-Host "Publishing new version $newAppVersion..."
           Publish-NAVApp -ServerInstance $env:BC_SERVER_INSTANCE -Path $appFile -SkipVerification
-          
+
           # 6. Synchronize Database Schema
           Write-Host "Synchronizing schema..."
           Sync-NAVApp -ServerInstance $env:BC_SERVER_INSTANCE -Name $newAppName -Version $newAppVersion -Tenant $env:BC_TENANT
