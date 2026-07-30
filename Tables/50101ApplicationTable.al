@@ -203,7 +203,7 @@ table 50101 "Main Application Table"
         }
         field(270; "Mother's Details"; option)
         {
-            OptionMembers = "Alive","Deceased";
+            OptionMembers = "Choose","Alive","Deceased";
             DataClassification = ToBeClassified;
         }
         field(271; "Mother's Full Name"; Text[100])
