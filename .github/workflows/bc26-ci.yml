@@ -21,6 +21,22 @@ jobs:
         shell: pwsh
         run: Write-Host "Symbols assumed present in .alpackages/"
 
+      - name: Verify package cache
+        shell: pwsh
+        run: |
+         $pkg = "${{ github.workspace }}\.alpackages"
+         Write-Host "Workspace: ${{ github.workspace }}"
+         Write-Host "Package path: $pkg"
+
+         if (Test-Path $pkg) {
+         Write-Host ".alpackages exists."
+         Get-ChildItem $pkg
+         } else {
+         Write-Host ".alpackages does not exist. Creating it..."
+         New-Item -ItemType Directory -Force -Path $pkg
+         Get-ChildItem "${{ github.workspace }}"
+         }  
+
       - name: Compile AL Extension
         shell: pwsh
         run: |
