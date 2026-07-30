@@ -76,19 +76,6 @@ jobs:
           if (-not $navTool) { Write-Error "NavAdminTool.ps1 not found."; exit 1 }
           Import-Module $navTool
 
-          # Show supported parameters
-          Write-Host "Unpublish-NAVApp parameters:"
-          (Get-Command Unpublish-NAVApp).Parameters.Keys | Sort-Object
-
-          Write-Host "Uninstall-NAVApp parameters:"
-          (Get-Command Uninstall-NAVApp).Parameters.Keys | Sort-Object
-
-          $unpublishSupportsForce =
-          (Get-Command Unpublish-NAVApp).Parameters.ContainsKey("Force")
-
-          $uninstallSupportsForce =
-          (Get-Command Uninstall-NAVApp).Parameters.ContainsKey("Force")
-
           # 2. Extract metadata from our newly compiled App file
           $appFile = "${{ github.workspace }}\output\CortechProject.app"
           $newAppName = (Get-NAVAppInfo -Path $appFile).Name
@@ -112,25 +99,77 @@ jobs:
           Write-Host "Publishing app..."
 
           try
-          { Publish-NAVApp ` -ServerInstance $env:BC_SERVER_INSTANCE ` -Path $appFile ` -SkipVerification  Write-Host "Publish successful."}
+          {
+          Publish-NAVApp `
+          -ServerInstance $env:BC_SERVER_INSTANCE `
+          -Path $appFile `
+          -SkipVerification
+ 
+           Write-Host "Publish successful."
+          }
           catch
-          {  Write-Error $_ exit 1}
+          {
+          Write-Error $_
+          exit 1
+          }
 
           # 6. Synchronize schema
 
           Write-Host "Synchronizing schema..."
-          try{ Sync-NAVApp `  -ServerInstance $env:BC_SERVER_INSTANCE ` -Name $newAppName ` -Version $newAppVersion ` -Tenant $env:BC_TENANT Write-Host "Synchronization successful."}
-          catch{Write-Error $_exit 1}
+
+          try
+          {
+          Sync-NAVApp `
+          -ServerInstance $env:BC_SERVER_INSTANCE `
+          -Name $newAppName `
+          -Version $newAppVersion `
+          -Tenant $env:BC_TENANT
+
+          Write-Host "Synchronization successful."
+          }
+          catch
+          {
+          Write-Error $_
+          exit 1
+          }
 
           # 7. Install or upgrade
-          if ($existingApp){Write-Host "Running data upgrade..."
-          try {  Start-NAVAppDataUpgrade ` -ServerInstance $env:BC_SERVER_INSTANCE ` -Name $newAppName `  -Version $newAppVersion Write-Host "Upgrade completed." }
-          catch {  Write-Error $_  exit }
-          }
-          else{ Write-Host "Installing application..."
-           try { Install-NAVApp ` -ServerInstance $env:BC_SERVER_INSTANCE ` -Name $newAppName`  -Version $newAppVersion ` -Tenant $env:BC_TENANT Write-Host "Installation completed."
-          }
-          catch { Write-Error $_ exit 1 }
-          }
+          if ($existingApp)
+          {
+          Write-Host "Running data upgrade..."
 
-          Write-Host "Deployment completed successfully!"
+          try
+          {
+          Start-NAVAppDataUpgrade `
+            -ServerInstance $env:BC_SERVER_INSTANCE `
+            -Name $newAppName `
+            -Version $newAppVersion
+
+           Write-Host "Upgrade completed."
+          }
+          catch
+          {
+          Write-Error $_
+          exit 1
+          }
+          }
+          else
+          {
+          Write-Host "Installing application..."
+
+          try
+          {
+          Install-NAVApp `
+            -ServerInstance $env:BC_SERVER_INSTANCE `
+            -Name $newAppName `
+            -Version $newAppVersion `
+            -Tenant $env:BC_TENANT
+
+          Write-Host "Installation completed."
+          }
+          catch
+          {
+          Write-Error $_
+          exit 1
+          }
+          }
