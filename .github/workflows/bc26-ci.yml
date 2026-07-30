@@ -18,11 +18,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download AL Symbols
-        shell: powershell
+        shell: pwsh
         run: Write-Host "Symbols assumed present in .alpackages/"
 
       - name: Compile AL Extension
-        shell: powershell
+        shell: pwsh
         run: |
           # 1. Intelligently locate alc.exe
           $alcPath = (Get-ChildItem "C:\Users\*\.vscode\extensions\ms-dynamics-smb.al-*\bin\win32\alc.exe" -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
@@ -43,7 +43,7 @@ jobs:
           Write-Host "Compilation Successful!"
 
       - name: Run AL Tests
-        shell: powershell
+        shell: pwsh
         run: |
           # 1. Run AL tests
           $testApp = "${{ github.workspace }}\output\ALProject3.Test.app"
