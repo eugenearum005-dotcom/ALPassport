@@ -235,7 +235,7 @@ table 50101 "Main Application Table"
 
         field(300; "Any children?"; Option)
         {
-            OptionMembers = "yes","No";
+            OptionMembers = "choose","yes","No";
             DataClassification = ToBeClassified;
         }
 
