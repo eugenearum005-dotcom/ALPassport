@@ -140,7 +140,7 @@ table 50101 "Main Application Table"
         }
         field(200; "reason for travel"; Option)
         {
-            OptionMembers = "Business","Leisure","Education","Medical";
+            OptionMembers = "Choose","Business","Leisure","Education","Medical";
             DataClassification = ToBeClassified;
         }
         field(210; "country of residence"; Text[100])
