@@ -76,6 +76,19 @@ jobs:
           if (-not $navTool) { Write-Error "NavAdminTool.ps1 not found."; exit 1 }
           Import-Module $navTool
 
+          # Show supported parameters
+          Write-Host "Unpublish-NAVApp parameters:"
+          (Get-Command Unpublish-NAVApp).Parameters.Keys | Sort-Object
+
+          Write-Host "Uninstall-NAVApp parameters:"
+          (Get-Command Uninstall-NAVApp).Parameters.Keys | Sort-Object
+
+          $unpublishSupportsForce =
+          (Get-Command Unpublish-NAVApp).Parameters.ContainsKey("Force")
+
+          $uninstallSupportsForce =
+          (Get-Command Uninstall-NAVApp).Parameters.ContainsKey("Force")
+
           # 2. Extract metadata from our newly compiled App file
           $appFile = "${{ github.workspace }}\output\CortechProject.app"
           $newAppName = (Get-NAVAppInfo -Path $appFile).Name
@@ -84,29 +97,40 @@ jobs:
           # 3. Check if any version of this app is ALREADY on the server
           $existingApp = Get-NAVAppInfo -ServerInstance $env:BC_SERVER_INSTANCE -Name $newAppName -ErrorAction SilentlyContinue
 
-          # 4. Handle Uninstallation of old version (if it exists)
-          if ($existingApp) {
-              Write-Host "Found previous version: $($existingApp.Version). Uninstalling and unpublishing..."
-              Uninstall-NAVApp -ServerInstance $env:BC_SERVER_INSTANCE -Name $newAppName -Tenant $env:BC_TENANT -Force
-              Unpublish-NAVApp -ServerInstance $env:BC_SERVER_INSTANCE -Name $newAppName -Version $existingApp.Version -Force
-          } else {
-              Write-Host "First time deployment detected. No previous versions to remove."
+          # 4. Check if app is already installed
+
+          if ($existingApp)
+          {
+           Write-Host "Existing version found: $($existingApp.Version)"
+          }
+          else{
+          Write-Host "No previous version found."
           }
 
-          # 5. Publish the New App
-          Write-Host "Publishing new version $newAppVersion..."
-          Publish-NAVApp -ServerInstance $env:BC_SERVER_INSTANCE -Path $appFile -SkipVerification
+           # 5. Publish the app
 
-          # 6. Synchronize Database Schema
+          Write-Host "Publishing app..."
+
+          try
+          { Publish-NAVApp ` -ServerInstance $env:BC_SERVER_INSTANCE ` -Path $appFile ` -SkipVerification  Write-Host "Publish successful."}
+          catch
+          {  Write-Error $_ exit 1}
+
+          # 6. Synchronize schema
+
           Write-Host "Synchronizing schema..."
-          Sync-NAVApp -ServerInstance $env:BC_SERVER_INSTANCE -Name $newAppName -Version $newAppVersion -Tenant $env:BC_TENANT
+          try{ Sync-NAVApp `  -ServerInstance $env:BC_SERVER_INSTANCE ` -Name $newAppName ` -Version $newAppVersion ` -Tenant $env:BC_TENANT Write-Host "Synchronization successful."}
+          catch{Write-Error $_exit 1}
 
-          # 7. Install or Upgrade Data
-          if ($existingApp -and $existingApp.Version -lt $newAppVersion) {
-              Write-Host "Version increased. Running data upgrade scripts..."
-              Start-NAVAppDataUpgrade -ServerInstance $env:BC_SERVER_INSTANCE -Name $newAppName -Version $newAppVersion
-          } else {
-              Write-Host "Installing app..."
-              Install-NAVApp -ServerInstance $env:BC_SERVER_INSTANCE -Name $newAppName -Version $newAppVersion -Tenant $env:BC_TENANT
+          # 7. Install or upgrade
+          if ($existingApp){Write-Host "Running data upgrade..."
+          try {  Start-NAVAppDataUpgrade ` -ServerInstance $env:BC_SERVER_INSTANCE ` -Name $newAppName `  -Version $newAppVersion Write-Host "Upgrade completed." }
+          catch {  Write-Error $_  exit }
           }
+          else{ Write-Host "Installing application..."
+           try { Install-NAVApp ` -ServerInstance $env:BC_SERVER_INSTANCE ` -Name $newAppName`  -Version $newAppVersion ` -Tenant $env:BC_TENANT Write-Host "Installation completed."
+          }
+          catch { Write-Error $_ exit 1 }
+          }
+
           Write-Host "Deployment completed successfully!"
