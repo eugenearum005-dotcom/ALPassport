@@ -173,3 +173,17 @@ jobs:
           exit 1
           }
           }
+          - name: Archive Successful Deployment
+          if: github.ref == 'refs/heads/main'
+          shell: pwsh
+          run: |
+          $backupRoot = "C:\BCAppBackups\ALProject3"
+          New-Item -ItemType Directory -Force -Path $backupRoot | Out-Null
+
+          $appFile = "${{ github.workspace }}\output\CortechProject.app"
+          $version = (Get-NAVAppInfo -Path $appFile).Version.ToString()
+
+          $backupPath = Join-Path $backupRoot "CortechProject-$version.app"
+          Copy-Item -Path $appFile -Destination $backupPath -Force
+
+          Write-Host "Backed up version $version to $backupPath"
