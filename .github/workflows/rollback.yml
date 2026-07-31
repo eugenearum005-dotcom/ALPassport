@@ -1,0 +1,56 @@
+name: Rollback Cortech BC26 App
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Exact version to roll back to (e.g. 1.0.0.3) - must have a matching backup'
+        required: true
+        type: string
+
+jobs:
+  rollback:
+    runs-on: self-hosted
+    env:
+      BC_SERVER_INSTANCE: ${{ secrets.BC_SERVER_INSTANCE }}
+      BC_TENANT: ${{ secrets.BC_TENANT }}
+
+    steps:
+      - name: Roll Back to Previous Version
+        shell: pwsh
+        run: |
+          $navTool = (Get-ChildItem -Path "C:\Program Files\Microsoft Dynamics 365 Business Central" -Recurse -Filter "NavAdminTool.ps1" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+          if (-not $navTool) { Write-Error "NavAdminTool.ps1 not found."; exit 1 }
+          Import-Module $navTool
+
+          $rollbackVersion = "${{ github.event.inputs.version }}"
+          $backupPath = "C:\BCAppBackups\ALProject3\CortechProject-$rollbackVersion.app"
+
+          if (-not (Test-Path $backupPath)) {
+              Write-Error "No backup found for version $rollbackVersion at $backupPath."
+              exit 1
+          }
+
+          $rollbackAppName = (Get-NAVAppInfo -Path $backupPath).Name
+          $rollbackAppVersion = (Get-NAVAppInfo -Path $backupPath).Version
+
+          $currentApp = Get-NAVAppInfo -ServerInstance $env:BC_SERVER_INSTANCE -Name $rollbackAppName -ErrorAction SilentlyContinue
+
+          if ($currentApp) {
+              Write-Host "Removing currently installed version $($currentApp.Version)..."
+              Uninstall-NAVApp -ServerInstance $env:BC_SERVER_INSTANCE -Name $rollbackAppName -Tenant $env:BC_TENANT -Force
+              Unpublish-NAVApp -ServerInstance $env:BC_SERVER_INSTANCE -Name $rollbackAppName -Version $currentApp.Version -Force
+          } else {
+              Write-Host "Nothing currently installed - publishing rollback version fresh."
+          }
+
+          Write-Host "Publishing rollback version $rollbackAppVersion..."
+          Publish-NAVApp -ServerInstance $env:BC_SERVER_INSTANCE -Path $backupPath -SkipVerification
+
+          Write-Host "Synchronizing schema..."
+          Sync-NAVApp -ServerInstance $env:BC_SERVER_INSTANCE -Name $rollbackAppName -Version $rollbackAppVersion -Tenant $env:BC_TENANT
+
+          Write-Host "Installing rollback version..."
+          Install-NAVApp -ServerInstance $env:BC_SERVER_INSTANCE -Name $rollbackAppName -Version $rollbackAppVersion -Tenant $env:BC_TENANT
+
+          Write-Host "Rollback to version $rollbackAppVersion completed."
