@@ -173,10 +173,10 @@ jobs:
           exit 1
           }
           }
-          - name: Archive Successful Deployment
-          if: github.ref == 'refs/heads/main'
-          shell: pwsh
-          run: |
+      - name: Archive Successful Deployment
+        if: github.ref == 'refs/heads/main'
+        shell: pwsh
+        run: |
           $backupRoot = "C:\BCAppBackups\ALProject3"
           New-Item -ItemType Directory -Force -Path $backupRoot | Out-Null
 
