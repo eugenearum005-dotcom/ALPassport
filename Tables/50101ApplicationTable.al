@@ -7,6 +7,7 @@ table 50101 "Main Application Table"
         field(1; "Application ID"; Code[20])
         {
             DataClassification = ToBeClassified;
+
         }
         field(10; "Passport owner"; option)
         {
@@ -257,8 +258,11 @@ table 50101 "Main Application Table"
         myInt: Integer;
 
     trigger OnInsert()
+    var
+        PassportMgt: Codeunit "Passport No. Series";
     begin
-
+        if "Application ID" = '' then
+            "Application ID" := PassportMgt.GetNextPassportNo();
     end;
 
     trigger OnModify()

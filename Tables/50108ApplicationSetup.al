@@ -13,6 +13,11 @@ table 50108 "Passport Application Setup"
         {
             Caption = 'Minimum Adult Age';
         }
+        field(3; "Passport Nos."; Code[20])
+        {
+            Caption = 'Passport Nos.';
+            TableRelation = "No. Series";
+        }
     }
 
     keys

@@ -21,6 +21,10 @@ page 50107 "Passport Application Setup"
                 {
 
                 }
+                field("Passport Nos."; Rec."Passport Nos.")
+                {
+                    ApplicationArea = All;
+                }
 
             }
         }
