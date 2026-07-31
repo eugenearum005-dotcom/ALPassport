@@ -1,4 +1,4 @@
-codeunit 50120 "Passport No. Series"
+codeunit 50102 "Passport No. Series"
 {
     procedure GetNextPassportNo(): Code[20]
     var
