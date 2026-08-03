@@ -34,6 +34,31 @@ jobs:
          Write-Host "Copied symbols:"
          Get-ChildItem $dest
 
+      - name: Auto Increment App Version
+        shell: pwsh
+        run: |
+         $appJsonPath = "${{ github.workspace }}\app.json"
+
+         $app = Get-Content $appJsonPath -Raw | ConvertFrom-Json
+
+         $version = $app.version.Split('.')
+
+         # Keep Major.Minor.Build
+         $major = $version[0]
+         $minor = $version[1]
+         $build = $version[2]
+
+         # Use GitHub run number as Revision
+         $revision = "${{ github.run_number }}"
+
+         $newVersion = "$major.$minor.$build.$revision"
+
+         $app.version = $newVersion
+
+         $app | ConvertTo-Json -Depth 20 | Set-Content $appJsonPath
+
+         Write-Host "New version: $newVersion"
+
 
       - name: Compile AL Extension
         shell: pwsh
@@ -81,8 +106,9 @@ jobs:
           $newAppName = (Get-NAVAppInfo -Path $appFile).Name
           $newAppVersion = (Get-NAVAppInfo -Path $appFile).Version
 
-          # 3. Check if any version of this app is ALREADY on the server
-          $existingApp = Get-NAVAppInfo -ServerInstance $env:BC_SERVER_INSTANCE -Name $newAppName -ErrorAction SilentlyContinue
+          
+          # 3. Check if THIS TENANT already has any version of this app installed
+          $existingApp = Get-NAVAppInfo -ServerInstance $env:BC_SERVER_INSTANCE -Tenant $env:BC_TENANT -Name $newAppName -ErrorAction SilentlyContinue
 
           # 4. Check if app is already installed
 
