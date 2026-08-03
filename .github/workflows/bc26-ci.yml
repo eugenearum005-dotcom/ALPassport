@@ -17,6 +17,12 @@ jobs:
       - name: Checkout repository code
         uses: actions/checkout@v4
 
+        - name: Show Running Identity
+        shell: pwsh
+        run: |
+          whoami
+          whoami /groups | findstr /i "Administrators"
+
       - name: Copy AL Symbols
         shell: pwsh
         run: |
