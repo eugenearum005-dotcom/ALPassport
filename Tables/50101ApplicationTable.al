@@ -95,7 +95,7 @@ table 50101 "Main Application Table"
         }
         field(100; "Gender"; Option)
         {
-            OptionMembers = "Male","Female","Other";
+            OptionMembers = "Choose","Male","Female","Other";
             DataClassification = ToBeClassified;
         }
         field(110; "Color of eyes"; Option)
