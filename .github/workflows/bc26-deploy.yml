@@ -43,24 +43,47 @@ jobs:
       - name: Auto Increment App Version
         shell: pwsh
         run: |
-         $appJsonPath = "${{ github.workspace }}\app.json"
+         $navTool = (Get-ChildItem -Path "C:\Program Files\Microsoft Dynamics 365 Business Central" -Recurse -Filter "NavAdminTool.ps1" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+         if (-not $navTool) { Write-Error "NavAdminTool.ps1 not found."; exit 1 }
+         Import-Module $navTool
 
+         $appJsonPath = "${{ github.workspace }}\app.json"
          $app = Get-Content $appJsonPath -Raw | ConvertFrom-Json
 
-         $version = $app.version.Split('.')
+         $parts = $app.version.Split('.')
+         $major = [int]$parts[0]
+         $minor = [int]$parts[1]
+         $build = [int]$parts[2]
 
-         # Keep Major.Minor.Build
-         $major = $version[0]
-         $minor = $version[1]
-         $build = $version[2]
+         $candidateRevision = [int]"${{ github.run_number }}"
 
-         # Use GitHub run number as Revision
-         $revision = "${{ github.run_number }}"
+         # Check what's actually on the server right now for this app - if anything
+         $serverApp = Get-NAVAppInfo -ServerInstance $env:BC_SERVER_INSTANCE -Name $app.name -ErrorAction SilentlyContinue |
+             Sort-Object Version -Descending | Select-Object -First 1
 
-         $newVersion = "$major.$minor.$build.$revision"
+         if ($serverApp) {
+             $serverVersion = [version]$serverApp.Version
+             Write-Host "Currently on server: $($serverApp.Version)"
 
+             if ($serverVersion.Major -gt $major -or
+                 ($serverVersion.Major -eq $major -and $serverVersion.Minor -gt $minor) -or
+                 ($serverVersion.Major -eq $major -and $serverVersion.Minor -eq $minor -and $serverVersion.Build -gt $build)) {
+                 Write-Host "Server is ahead on Major/Minor/Build ($($serverVersion)) compared to app.json ($major.$minor.$build) - bumping build to match and go one higher."
+                 $major = $serverVersion.Major
+                 $minor = $serverVersion.Minor
+                 $build = $serverVersion.Build + 1
+                 $candidateRevision = 0
+             }
+             elseif ($serverVersion.Major -eq $major -and $serverVersion.Minor -eq $minor -and $serverVersion.Build -eq $build) {
+                 if ($candidateRevision -le $serverVersion.Revision) {
+                     $candidateRevision = $serverVersion.Revision + 1
+                     Write-Host "run_number ($($env:GITHUB_RUN_NUMBER)) would not exceed server - bumping revision to $candidateRevision instead"
+                 }
+             }
+         }
+
+         $newVersion = "$major.$minor.$build.$candidateRevision"
          $app.version = $newVersion
-
          $app | ConvertTo-Json -Depth 20 | Set-Content $appJsonPath
 
          Write-Host "New version: $newVersion"
