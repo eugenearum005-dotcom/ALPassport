@@ -106,22 +106,7 @@ jobs:
           $newAppName = (Get-NAVAppInfo -Path $appFile).Name
           $newAppVersion = (Get-NAVAppInfo -Path $appFile).Version
 
-          
-          # 3. Check if THIS TENANT already has any version of this app installed
-          $existingApp = Get-NAVAppInfo -ServerInstance $env:BC_SERVER_INSTANCE -Tenant $env:BC_TENANT -TenantSpecificProperties -Name $newAppName -ErrorAction SilentlyContinue
-
-          # 4. Check if app is actually installed (not just published)
-          if ($existingApp -and $existingApp.IsInstalled)
-          {
-          Write-Host "Existing installed version found: $($existingApp.Version)"
-          }
-          else{
-          Write-Host "No installed version found on this tenant."
-          $existingApp = $null
-          }
-
-           # 5. Publish the app
-
+          # 3. Publish the app
           Write-Host "Publishing app..."
 
           try
@@ -139,7 +124,7 @@ jobs:
           exit 1
           }
 
-          # 6. Synchronize schema
+          # 4. Synchronize schema
 
           Write-Host "Synchronizing schema..."
 
@@ -159,7 +144,7 @@ jobs:
           exit 1
           }
 
-          # 7. Install, or upgrade if a previous version is already installed
+          # 5. Install, or upgrade if a previous version is already installed
           Write-Host "Attempting install..."
 
           try
@@ -197,7 +182,9 @@ jobs:
           {
           Write-Error $_
           exit 1
-          }}
+          }
+          }
+
       - name: Archive Successful Deployment
         if: github.ref == 'refs/heads/main'
         shell: pwsh
