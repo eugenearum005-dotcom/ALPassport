@@ -17,7 +17,7 @@ jobs:
       - name: Checkout repository code
         uses: actions/checkout@v4
 
-        - name: Show Running Identity
+      - name: Show Running Identity
         shell: pwsh
         run: |
           whoami
