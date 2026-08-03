@@ -100,7 +100,7 @@ table 50101 "Main Application Table"
         }
         field(110; "Color of eyes"; Option)
         {
-            OptionMembers = "Brown","Blue","Green","Other";
+            OptionMembers = "Brown","Blue","Green","Hazel","Other";
             DataClassification = ToBeClassified;
         }
         field(120; "Height in feet"; Option)
