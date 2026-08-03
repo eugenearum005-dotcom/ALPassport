@@ -108,16 +108,17 @@ jobs:
 
           
           # 3. Check if THIS TENANT already has any version of this app installed
-          $existingApp = Get-NAVAppInfo -ServerInstance $env:BC_SERVER_INSTANCE -Tenant $env:BC_TENANT -Name $newAppName -ErrorAction SilentlyContinue
+          $existingApp = Get-NAVAppInfo -ServerInstance $env:BC_SERVER_INSTANCE -Tenant $env:BC_TENANT -TenantSpecificProperties -Name $newAppName -ErrorAction SilentlyContinue
 
-          # 4. Check if app is already installed
+          # 4. Check if app is actually installed (not just published)
 
-          if ($existingApp)
+          if ($existingApp -and $existingApp.IsInstalled)
           {
-           Write-Host "Existing version found: $($existingApp.Version)"
+          Write-Host "Existing installed version found: $($existingApp.Version)"
           }
           else{
-          Write-Host "No previous version found."
+          Write-Host "No installed version found on this tenant."
+          $existingApp = $null
           }
 
            # 5. Publish the app
