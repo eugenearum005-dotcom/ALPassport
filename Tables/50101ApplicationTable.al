@@ -16,7 +16,7 @@ table 50101 "Main Application Table"
         }
         field(20; "Dual Nationality"; Option)
         {
-            OptionMembers = "Yes","No";
+            OptionMembers = "Choose","Yes","No";
             DataClassification = ToBeClassified;
         }
         field(21; "Country of Dual Nationality"; Text[20])
