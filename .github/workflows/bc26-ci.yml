@@ -111,7 +111,6 @@ jobs:
           $existingApp = Get-NAVAppInfo -ServerInstance $env:BC_SERVER_INSTANCE -Tenant $env:BC_TENANT -TenantSpecificProperties -Name $newAppName -ErrorAction SilentlyContinue
 
           # 4. Check if app is actually installed (not just published)
-
           if ($existingApp -and $existingApp.IsInstalled)
           {
           Write-Host "Existing installed version found: $($existingApp.Version)"
@@ -160,19 +159,33 @@ jobs:
           exit 1
           }
 
-          # 7. Install or upgrade
-          if ($existingApp)
-          {
-          Write-Host "Running data upgrade..."
+          # 7. Install, or upgrade if a previous version is already installed
+          Write-Host "Attempting install..."
 
           try
           {
-          Start-NAVAppDataUpgrade `
-            -ServerInstance $env:BC_SERVER_INSTANCE `
-            -Name $newAppName `
-            -Version $newAppVersion
+          Install-NAVApp `
+          -ServerInstance $env:BC_SERVER_INSTANCE `
+          -Name $newAppName `
+          -Version $newAppVersion `
+          -Tenant $env:BC_TENANT
 
-           Write-Host "Upgrade completed."
+          Write-Host "Installation completed."
+          }
+          catch
+          {
+          if ($_.Exception.Message -match "earlier version was already installed")
+          {
+          Write-Host "Earlier version detected - running data upgrade instead..."
+ 
+          try
+          {
+          Start-NAVAppDataUpgrade `
+          -ServerInstance $env:BC_SERVER_INSTANCE `
+          -Name $newAppName `
+          -Version $newAppVersion
+
+            Write-Host "Upgrade completed."
           }
           catch
           {
@@ -182,24 +195,9 @@ jobs:
           }
           else
           {
-          Write-Host "Installing application..."
-
-          try
-          {
-          Install-NAVApp `
-            -ServerInstance $env:BC_SERVER_INSTANCE `
-            -Name $newAppName `
-            -Version $newAppVersion `
-            -Tenant $env:BC_TENANT
-
-          Write-Host "Installation completed."
-          }
-          catch
-          {
           Write-Error $_
           exit 1
-          }
-          }
+          }}
       - name: Archive Successful Deployment
         if: github.ref == 'refs/heads/main'
         shell: pwsh
